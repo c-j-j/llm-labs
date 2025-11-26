@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "ts-node src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "qdrant:search": "ts-node scripts/qdrant-search.ts",
+    "qdrant:setup": "ts-node scripts/setup-qdrant.ts"
   },
   "keywords": [],
   "author": "",

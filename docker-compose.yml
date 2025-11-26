@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant
+    ports:
+      - "6333:6333"   # HTTP
+      - "6334:6334"   # gRPC (optional)
+    volumes:
+      - qdrant-storage:/qdrant/storage
+    restart: unless-stopped
+
+volumes:
+  ollama-data:
+  qdrant-storage:
