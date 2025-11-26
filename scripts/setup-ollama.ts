@@ -1,13 +1,24 @@
-import { pullModel } from "../src/lib/ollama";
+import { modelExists, pullModel } from "../src/lib/ollama";
 
-export {};
+export { };
 
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL ?? "nomic-embed-text";
+const CHAT_MODEL = process.env.OLLAMA_CHAT_MODEL ?? "llama3.1";
 
 async function main() {
-  console.log(`Pulling model '${OLLAMA_MODEL}'...`);
-  await pullModel(OLLAMA_MODEL);
-  console.log("Model ready.");
+  const modelsToEnsure = [OLLAMA_MODEL, CHAT_MODEL];
+
+  for (const model of modelsToEnsure) {
+    const exists = await modelExists(model);
+    if (exists) {
+      console.log(`Model '${model}' already present. Skipping pull.`);
+      continue;
+    }
+
+    console.log(`Pulling model '${model}'...`);
+    await pullModel(model);
+    console.log(`Model '${model}' ready.`);
+  }
 }
 
 main().catch((err) => {
