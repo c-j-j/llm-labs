@@ -1,13 +1,14 @@
+import { embedText } from "../src/lib/ollama";
 import { searchPoints } from "../src/lib/qdrant";
 
 export { };
 
-const VECTOR_SIZE = Number(process.env.QDRANT_VECTOR_SIZE ?? 1536);
 const LIMIT = Number(process.env.QDRANT_LIMIT ?? 5);
 
 async function main() {
-  const vector = Array.from({ length: VECTOR_SIZE }, () => 0);
-  const results = await searchPoints(vector, LIMIT);
+  const question = "tell me about the eiffle tower"
+  const embedded = await embedText({ text: question })
+  const results = await searchPoints(embedded, LIMIT);
   console.log("Search results:", results);
 }
 
