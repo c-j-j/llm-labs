@@ -1,27 +1,16 @@
 {
-  "name": "rag-test",
+  "name": "llm-lab",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/index.js",
   "scripts": {
-    "dev": "ts-node src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "qdrant:search": "ts-node scripts/qdrant-search.ts",
-    "qdrant:setup": "ts-node scripts/setup-qdrant.ts",
-    "qdrant:embed": "ts-node scripts/embed-to-qdrant.ts",
-    "qdrant:delete": "ts-node scripts/delete-qdrant-collection.ts",
-    "ollama:setup": "ts-node scripts/setup-ollama.ts",
-    "test:rag": "ts-node scripts/test-rag.ts"
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.21.2"
   },
   "devDependencies": {
-    "@types/express": "^4.17.25",
     "@types/node": "^24.10.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
