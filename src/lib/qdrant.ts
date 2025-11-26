@@ -88,6 +88,8 @@ export async function searchPoints(
   const payload = {
     vector,
     limit,
+    with_payload: true,
+    with_vector: false,
   };
 
   const response = await fetch(

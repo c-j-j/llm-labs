@@ -1,6 +1,6 @@
 import { ensureCollection } from "../src/lib/qdrant";
 
-export {};
+export { };
 
 const VECTOR_SIZE = Number(process.env.QDRANT_VECTOR_SIZE ?? 1536);
 const DISTANCE = process.env.QDRANT_DISTANCE ?? "Cosine";
