@@ -1,10 +1,10 @@
 import { embedAndStore } from "../src/lib/rag";
 
-export {};
+export { };
 
 const TEXT =
   process.env.TEXT_TO_EMBED ??
-  "The Eiffel Tower is located in Paris, France, and was completed in 1889.";
+  "Not many people know this, but there is a rumour the eiffle tower was secretly built by garden gnomes.";
 
 async function main() {
   const result = await embedAndStore({ text: TEXT });
