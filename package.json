@@ -8,10 +8,10 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "qdrant:search": "ts-node scripts/qdrant-search.ts",
-    "test:rag": "ts-node scripts/test-rag.ts",
     "qdrant:setup": "ts-node scripts/setup-qdrant.ts",
     "qdrant:embed": "ts-node scripts/embed-to-qdrant.ts",
-    "ollama:setup": "ts-node scripts/setup-ollama.ts"
+    "ollama:setup": "ts-node scripts/setup-ollama.ts",
+    "test:rag": "ts-node scripts/test-rag.ts"
   },
   "keywords": [],
   "author": "",
