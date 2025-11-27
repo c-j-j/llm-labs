@@ -1,4 +1,4 @@
-export {};
+export { };
 
 const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://localhost:11434";
 const CHAT_MODEL = process.env.OLLAMA_CHAT_MODEL ?? "llama3.2:1b";
