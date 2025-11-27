@@ -11,6 +11,7 @@ A small collection of numbered scripts for learning RAG-style workflows with Oll
 - `scripts/05-qdrant-search.ts` – Perform a search with a zero vector (or adjust `QDRANT_VECTOR_SIZE`). Env: `QDRANT_VECTOR_SIZE`, `QDRANT_LIMIT`, `QDRANT_URL`, `QDRANT_COLLECTION`.
 - `scripts/06-test-rag.ts` – Full flow: embed query, search, build context, and ask the chat model. Env: `QDRANT_LIMIT`, `QDRANT_SCORE_THRESHOLD`, `OLLAMA_CHAT_MODEL`, `QDRANT_URL`, `QDRANT_COLLECTION`.
 - `scripts/07-tool-sum.ts` – Demonstrates a simple “tool” loop: the model can request a sum operation and then answer using the result. Env: `OLLAMA_CHAT_MODEL`, `OLLAMA_URL`, `TOOL_QUESTION`.
+- `scripts/08-structured-output.ts` – Demonstrates structured JSON output (title/entities/summary) using `format: "json"`. Env: `OLLAMA_CHAT_MODEL`, `OLLAMA_URL`, `STRUCT_TEXT`.
 - `scripts/ask.sh` – Curl helper to call the (removed) Express `/ask` echo endpoint; keep as an example of hitting an API.
 
 ## Running scripts
@@ -24,6 +25,7 @@ Use `npx ts-node <script>`:
 - `npx ts-node scripts/05-qdrant-search.ts`
 - `npx ts-node scripts/06-test-rag.ts`
 - `npx ts-node scripts/07-tool-sum.ts`
+- `npx ts-node scripts/08-structured-output.ts`
 
 TypeScript compile check: `npm run build`.
 
