@@ -1,9 +1,10 @@
 import { z } from "zod";
-import { isInStock, isOnSale, listProducts } from "./09-agent-helpers";
+import { isInStock, listProducts } from "./09-agent-helpers";
 
 const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://localhost:11434";
 const CHAT_MODEL = process.env.OLLAMA_CHAT_MODEL ?? "llama3.2:1b";
-const QUESTION = process.env.TOOL_QUESTION ?? "Find me the cheapest product in stock and on sale";
+const QUESTION = process.env.TOOL_QUESTION ?? "Find me the cheapest product in stock";
+const DEBUG = !!process.env.DEBUG;
 
 export const AgentActionSchema = z.discriminatedUnion("action", [
   z.object({
@@ -14,17 +15,13 @@ export const AgentActionSchema = z.discriminatedUnion("action", [
     productId: z.string(),
   }),
   z.object({
-    action: z.literal("check_sale"),
-    productId: z.string(),
-  }),
-  z.object({
     action: z.literal("result"),
-    result: z.string(),
+    productId: z.string(),
+    price: z.number(),
   }),
 ]);
 
 export type AgentAction = z.infer<typeof AgentActionSchema>;
-
 
 async function callModel(prompt: string): Promise<AgentAction> {
   const response = await fetch(`${OLLAMA_URL}/api/generate`, {
@@ -47,7 +44,8 @@ async function callModel(prompt: string): Promise<AgentAction> {
   }
 
   try {
-    return AgentActionSchema.parse(data.response)
+    const parsed = typeof data.response === "string" ? JSON.parse(data.response) : data.response;
+    return AgentActionSchema.parse(parsed);
   } catch (err) {
     throw new Error(`Model response was not valid JSON: ${data.response}`);
   }
@@ -56,6 +54,8 @@ async function callModel(prompt: string): Promise<AgentAction> {
 class AgentState {
   private _lastToolResult: string | null = null;
   toolCalled: string | null = null;
+  products: ReturnType<typeof listProducts> | null = null;
+  stockResults: Record<string, boolean> = {};
 
   set lastToolResult(value: string | null) {
     this._lastToolResult = value;
@@ -67,11 +67,60 @@ class AgentState {
 }
 
 function addShortTermMemory(toolPrompt: string, agentState: AgentState): string {
-  let memory = ""
+  const lines: string[] = []
+
+  if (agentState.products?.length) {
+    const productLines = agentState.products
+      .map((p) => `  - ${p.id}: ${p.name} ($${p.price})`)
+      .join("\n");
+    lines.push("Known products from list_products (use only these ids):", productLines)
+  }
+
+  const stockEntries = Object.entries(agentState.stockResults)
+  if (stockEntries.length) {
+    const stockLines = stockEntries
+      .map(([id, inStock]) => `  - ${id}: inStock=${inStock}`)
+      .join("\n")
+    lines.push("Known stock checks:", stockLines)
+  }
+
+  if (agentState.products?.length) {
+    const confirmed = agentState.products
+      .filter((p) => agentState.stockResults[p.id])
+      .sort((a, b) => a.price - b.price)
+    if (confirmed.length) {
+      const best = confirmed[0]
+      lines.push(
+        "Cheapest already confirmed (in stock):",
+        `  - ${best.id}: ${best.name} ($${best.price})`
+      )
+    } else {
+      lines.push(
+        "No product confirmed in stock yet; check stock for candidates from list_products."
+      )
+    }
+  }
 
   if (agentState.toolCalled) {
-    memory = memory + `You called the tool ${agentState.toolCalled}. The result is ${agentState.lastToolResult}`
+    let formattedResult = agentState.lastToolResult
+    try {
+      const parsed = formattedResult ? JSON.parse(formattedResult) : null
+      formattedResult = parsed ? JSON.stringify(parsed, null, 2) : formattedResult
+    } catch {
+      // leave as-is
+    }
+
+    lines.push(
+      "Recent tool interaction:",
+      `  - tool: ${agentState.toolCalled}`,
+      `  - result: ${formattedResult}`,
+      "Do not repeat list_products; use its ids for stock checks.",
+      "Only return result after stock is checked for the chosen id.",
+      "Use existing stock knowledge before calling tools again."
+    )
   }
+
+  const memory = lines.length ? `\nContext:\n${lines.join("\n")}\n` : ""
   return toolPrompt + memory
 }
 
@@ -81,44 +130,66 @@ You can choose between these actions and must respond with a single JSON object.
 Actions:
 - {"action": "list_products"}
 - {"action": "check_stock", "productId": "<id>"}
-- {"action": "check_sale", "productId": "<id>"}
-- {"action": "result", "result": "<final answer>"}   # final answer
+- {"action": "result", "productId": "<id>", "price": <number>}   # final answer
 
 Question: ${QUESTION}
 
-If you need to get data, use one of the actions. Return "result" when you have the final answer.
-Only return JSON; no extra text.`;
+Rules (follow strictly):
+- For a candidate product, call check_stock before returning a result.
+- Do NOT return result until you have real tool outputs. No placeholders like <id> or <Cheapest...>.
+- Return result with the actual productId from the check_stock tool
+- After list_products, evaluate candidates from cheapest to most expensive.
+- Once you find a product that is in stock, immediately return it with its price.
+- Only return JSON; no extra text.`;
 
 
   let promptCount = 0
   const agentState = new AgentState()
 
-  while (promptCount < 10) {
-    const response = await callModel(addShortTermMemory(toolPrompt, agentState));
+  let result
+  while (promptCount < 10 && !result) {
+    const prompt = addShortTermMemory(toolPrompt, agentState);
 
-    if (response.action === 'list_products') {
-      const products = listProducts()
-      console.log("Tool call: list_products ->", products)
-      agentState.lastToolResult = products.join(',')
-      agentState.toolCalled = 'list_products'
+    const response = await callModel(prompt);
+
+    if (DEBUG) {
+      console.log("\n--- Prompt sent to model ---\n", prompt, "\n----------------------------\n");
+      console.log("--- Model response ---\n", response, "\n----------------------\n");
     }
-    if (response.action === 'check_sale') {
-      const onSale = isOnSale(response.productId) ? 'true' : 'false'
-      console.log(`Tool call: check_sale (${response.productId}) -> ${onSale}`)
-      agentState.lastToolResult = onSale
-      agentState.toolCalled = 'check_sale'
-    }
-    if (response.action === 'check_stock') {
-      const inStock = isInStock(response.productId) ? 'true' : 'false'
-      console.log(`Tool call: check_stock (${response.productId}) -> ${inStock}`)
-      agentState.lastToolResult = inStock
-      agentState.toolCalled = 'check_stock'
-    }
-    if (response.action === 'result') {
-      console.log("Model returned with result ", response.result)
-      break
+
+    switch (response.action) {
+      case 'list_products': {
+        const products = listProducts()
+        console.log("Tool call: list_products ->", products)
+        agentState.lastToolResult = JSON.stringify(products)
+        agentState.toolCalled = 'list_products'
+        agentState.products = products
+        break
+      }
+      case 'check_stock': {
+        const inStock = isInStock(response.productId) ? 'true' : 'false'
+        console.log(`Tool call: check_stock (${response.productId}) -> ${inStock}`)
+        agentState.lastToolResult = JSON.stringify({ productId: response.productId, inStock })
+        agentState.toolCalled = 'check_stock'
+        agentState.stockResults[response.productId] = inStock === 'true'
+        break
+      }
+      case 'result': {
+        console.log("Model returned with result ", response)
+        result = `Found product ${response.productId} with price ${response.price}`
+        break
+      }
+      default: {
+        console.error("Unhandled action from model: ", response)
+      }
     }
     promptCount++
+  }
+
+  if (!result) {
+    console.error("No result found")
+  } else {
+    console.log(result)
   }
 }
 
